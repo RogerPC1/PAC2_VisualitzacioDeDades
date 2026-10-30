@@ -1,0 +1,211 @@
+---
+title: "PAC2_Vis"
+author: "Roger Parramon Codina"
+date: "2026-10-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages}
+library(ggplot2) # Pels gràfics
+library(dplyr) # Per les transformacions
+library(plyr) # Per formatejar
+library(sinkr) # Pel Stream Graph
+
+# Pel raincloud plot:
+library(tidyverse)
+library(tidyquant)
+library(ggdist)
+library(ggthemes)
+```
+
+
+```{r piràmide_població_EU}
+# Dataset:
+# https://doi.org/10.2908/MIGR_POP1CTZ
+
+EU_poblacio_path <- "C:/Users/Mi Pc/Desktop/UOC/2n semestre/Visualització de dades/PAC2/population_europe/population_europe.csv"
+EU_poblacio_tmp <- read.csv(EU_poblacio_path)
+
+# Agafar només les dimensions que em calen (edat, sexe, població i any)
+EU_poblacio <- EU_poblacio_tmp[c('age', 'sex', 'OBS_VALUE', 'TIME_PERIOD')]
+colnames(EU_poblacio) <- c("Edat", "Sexe", "Individus", "Any")
+
+# Formatejar per a deixar-ho en ordre
+EU_poblacio$Edat <- replace(EU_poblacio$Edat, EU_poblacio$Edat %in% c("Y5-9"), c("Y_5-9"))
+EU_poblacio$Edat <- replace(EU_poblacio$Edat, EU_poblacio$Edat %in% c("Y_LT5"), c("Menys_de_5"))
+
+
+# No vull ni les sumes de varis grups (redundants) ni les edats que no són als dos grups:
+EU_poblacio <- EU_poblacio[EU_poblacio$Edat != "Y15-64" 
+                           & EU_poblacio$Edat != "Y_LT15" 
+                           & EU_poblacio$Edat != "Y_GE65"
+                           & EU_poblacio$Edat != "Y_GE85"
+                           & EU_poblacio$Edat != "Y95-99"
+                           & EU_poblacio$Edat != "Y90-94"
+                           & EU_poblacio$Edat != "Y85-89"
+                           & EU_poblacio$Edat != "UNK",]
+
+
+# Multiplicar per -1 un dels gèneres:
+EU_poblacio <- EU_poblacio %>% mutate(Individus = case_when(Sexe == "M" ~ -Individus, TRUE ~ Individus))
+
+# Separar en 2020 i 2023
+EU_poblacio_2020 <- subset(EU_poblacio, subset = Any %in% "2020")
+EU_poblacio_2023 <- subset(EU_poblacio, subset = Any %in% "2023")
+
+# Deixar-ho en %:
+total_2020 = sum(abs(EU_poblacio_2020$Individus))
+EU_poblacio_2020$Percentatge = EU_poblacio_2020$Individus / total_2020 * 100
+
+total_2023 = sum(abs(EU_poblacio_2023$Individus))
+EU_poblacio_2023$Percentatge = EU_poblacio_2023$Individus / total_2023 * 100
+
+
+# Gràfics:
+ggplot(EU_poblacio_2020,aes(x = Percentatge,
+                            y = Edat,
+                            fill = Sexe)) + geom_col() +
+  labs(title = "Edat de la població Europea (2020) - Pyramid Chart") +
+  scale_x_continuous(labels = abs)
+
+ggplot(EU_poblacio_2023,aes(x = Percentatge,
+                            y = Edat,
+                            fill = Sexe)) + geom_col() +
+  labs(title = "Edat de la població Europea (2023) - Pyramid Chart") +
+  scale_x_continuous(labels = abs)
+```
+
+```{r stream_turisme_paisos}
+# Dataset:
+# https://data.worldbank.org/indicator/ST.INT.ARVL?most_recent_value_desc=true
+
+turisme_paisos_path <- "C:/Users/Mi Pc/Desktop/UOC/2n semestre/Visualització de dades/PAC2/quantitat_turistes_pais_any/turisme_anys.csv"
+
+turisme_paisos_tmp <- read.csv(turisme_paisos_path)
+
+# Llista de països:
+# Top 15 al 2020 - són masses, miro si retallo
+llista_paisos_1 = c("ARE", "AUT", "CHN", "DEU", "DNK", "ESP", "FRA", "GBR", "HRV", "HUN", "ITA", "MEX", "TUR", "USA", "VIR")
+# Top 5 al 2019 - meh
+llista_paisos_1_1 = c("FRA", "USA", "CHN", "ESP", "MEX", "ITA", "POL", "HUN")
+
+# Balcans - Interessant, però lineal, cap tendència interessant
+llista_paisos_2 = c("ALB", "BIH", "BGR", "HRV", "GRC", "XKX", "MNE", "MKD", "ROU", "SRB", "SVN", "TUR")
+
+# America llatina - són bastants, i mèxic domina massa
+llista_paisos_3 = c("ARG", "BOL", "BRA", "COL", "CRI", "CUB", "ECU", "SLV", "GTM", "HTI", "HND", "MEX", "NIC", "PAN", "PRY", "PER", "DOM", "URY", "VEN", "CHL")
+# Mèxic fora, i eliminem els països amb menys xifres 
+llista_paisos_3_3 = c("ARG", "BRA", "COL", "CRI", "CUB", "PRY", "PER", "DOM", "URY", "CHL")
+
+# No cal tots els anys, ja que abans de mitjans dels 90 hi ha molts NAs
+turisme_paisos <- turisme_paisos_tmp[c('Country.Name', 'Country.Code', 'X1995',
+                                   'X1996', "X1997", "X1998", "X1999", "X2000",
+                                   "X2001", "X2002", "X2003", "X2004", "X2005",
+                                   "X2006", "X2007", "X2008", "X2009", "X2010",
+                                   "X2011", "X2012", "X2013", "X2014", "X2015",
+                                   "X2016", "X2017", "X2018", "X2019", "X2020")]
+
+turisme_paisos <- turisme_paisos[turisme_paisos_tmp$Country.Code %in% llista_paisos_3_3,]
+turisme_paisos_vector <- as.vector(turisme_paisos$Country.Name) # Per fer el nom de la matriu
+
+# Em cal un vector amb els anys:
+turisme_anys_vector <- c(1995, 1996, 1997, 1998, 1999,
+                         2000, 2001, 2002, 2003, 2004,
+                         2005, 2006, 2007, 2008, 2009,
+                         2010, 2011, 2012, 2013, 2014,
+                         2015, 2016, 2017, 2018, 2019,
+                         2020)
+
+# I una matriu
+turisme_paisos[is.na(turisme_paisos)] = 0 # Eliminar NA, posar 0
+turisme_paisos_matrix <- data.matrix(subset(turisme_paisos, select = -c(Country.Name, Country.Code)))
+row.names(turisme_paisos_matrix) <- turisme_paisos_vector
+# Transposar
+turisme_paisos_matrix <- t(turisme_paisos_matrix) / 1000000
+
+# Colors:
+colors <- hcl.colors(ncol(turisme_paisos_matrix), "RdBu")
+
+plotStream(turisme_anys_vector,
+           turisme_paisos_matrix,
+           col = colors,
+           border = "darkslategrey",
+           frac.rand = 0.2,
+           spar = 0.4,
+           order.method = "first",
+           xlab = "Any",
+           axes = FALSE)
+axis(1)
+title(main = "Milions de turistes a Amèrica Llatina (1995 - 2020) - Stream Graph")
+
+# La llegenda:
+legend(
+  x = "topleft",
+  inset = c(0, 0),
+  legend = turisme_paisos$Country.Name,
+  fill = colors,
+  xpd = TRUE,
+  ncol = 3,
+  cex = 0.65,
+  box.col = "white")
+```
+
+```{r raincloud_GDP_continents}
+# Datasets:
+# https://www.kaggle.com/datasets/hserdaraltan/countries-by-continent
+# https://data.worldbank.org/indicator/NY.GDP.MKTP.CD?name_desc=false
+
+GDP_dataset_path = "C:/Users/Mi Pc/Desktop/UOC/2n semestre/Visualització de dades/PAC2/GDP_per_continent/GPD_paisos/GPD_paisos.csv"
+continents_path = "C:/Users/Mi Pc/Desktop/UOC/2n semestre/Visualització de dades/PAC2/GDP_per_continent/paisos_continents/paisos_continents.csv"
+
+GDP_dataset_tmp <- read.csv(GDP_dataset_path)
+continents <- read.csv(continents_path)
+continents$Continent <- mapvalues(continents$Continent, from=c("Africa", "Asia", "Europe", "North America", "South America"), to=c("Àfrica", "Àsia", "Europa", "Amèrica del Nord", "Amèrica del Sud")) # En català
+GDP_dataset_tmp$Country.Name <- mapvalues(GDP_dataset_tmp$Country.Name, 
+                                          from=c("Egypt, Arab Rep.", "Bahamas, The", "Myanmar", "Congo, Rep.", "Congo, Dem. Rep."), 
+                                          to=c("Egypt", "Bahamas", "Burma (Myanmar)", "Congo", "Democratic Republic of Congo")) # Corregir alguns noms
+
+# Tractament de dades:
+GDP_dataset <-subset(GDP_dataset_tmp, select = -c(Indicator.Name, Indicator.Code)) # Eliminar dades innecessàries
+colnames(continents) <- c("Continent", "Country.Name")
+GDP_dataset = merge(GDP_dataset, continents) # Afegir el continent
+
+
+# Eliminar anys:
+GDP_dataset <- subset(GDP_dataset, select = -c(3:57)) # Em quedo amb només 2015-2020
+
+# Fer el meld:
+GDP_dataset_llarg <- GDP_dataset %>%
+  pivot_longer(
+    cols = `X2015`:`X2025`,
+    names_to = "Any",
+    values_to = "GDP") 
+
+GDP_dataset_llarg <-subset(GDP_dataset_llarg, select = -c(X))
+GDP_dataset_llarg <- GDP_dataset_llarg %>% drop_na(GDP) # Eliminar NA --> convertir-los en 0 seria erroni
+colnames(GDP_dataset_llarg) <- c("País", "Codi", "Continent", "Any", "GDP")
+
+GDP_dataset_llarg$GDP_log10 <- log10(GDP_dataset_llarg$GDP)
+
+# Gràfic
+ggplot(data = GDP_dataset_llarg, aes(x = Continent, y = GDP_log10, fill = Continent)) +
+  stat_halfeye(adjust = 0.5, justification = -0.2, .width = 0, point_colour = NA) + # El "núvol"
+  geom_boxplot(width = 0.12, outlier.color = NA, alpha = 0.3) + # El boxplot
+  stat_dots(side = "left", justification = 1.1, binwidth = NA) + # La "pluja"
+  scale_fill_tq(theme = "dark") +
+  theme_minimal() +
+  labs(
+    title = "Producte Interior Brut per continents (2015 - 2025) - Rain cloud Plot",
+    x = "Continent",
+    y = "PIB (escala log10)",
+    fill = "Continent") +
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_blank()) +
+  coord_flip() # Per a que quedi bé i semblin núvols, si no estarien de costat
+```
