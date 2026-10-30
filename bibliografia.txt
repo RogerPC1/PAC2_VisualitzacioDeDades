@@ -1,0 +1,27 @@
+# Conjunts de dades:
+1) Població EU:
+https://doi.org/10.2908/MIGR_POP1CTZ
+
+2) Turisme global:
+https://data.worldbank.org/indicator/ST.INT.ARVL?most_recent_value_desc=true
+
+3) PIB global i continents:
+https://www.kaggle.com/datasets/hserdaraltan/countries-by-continent
+https://data.worldbank.org/indicator/NY.GDP.MKTP.CD?name_desc=false
+
+# Informació visualitzacions:
+The Data Visualization Catalogue (https://datavizcatalogue.com/index.html)
+From Data to Viz (https://www.data-to-viz.com/)
+The Chartmaker Directory (https://chartmaker.visualisingdata.com/)
+
+# Informació per crear les visualitzacions:
+1) Credibly Curious per a la Piràmide Poblacional:
+https://www.njtierney.com/posts/2022-08-09-pyramid-plots-in-ggplot2/
+
+2) R Charts per a l'StreamGraph:
+https://r-charts.com/evolution/streamgraph/
+
+3) Blog de Cedric Scherer per al Rainclouds plot:
+https://www.cedricscherer.com/2021/06/06/visualizing-distributions-with-raincloud-plots-and-how-to-create-them-with-ggplot2/#aim
+
+I finalment, StackOverflow i Geeks4Geeks per consultes técniques varies durant tot el procediment.
